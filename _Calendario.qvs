@@ -1,0 +1,30 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion LinkTable
+Desarrollador: 	William Alejandro Giraldo Zuluaga
+Email:			William_giraldo@Eficacia.com.co
+Fecha			20/03/2020 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Calendario_Tmp:
+    LOAD Distinct
+        SK.Fecha                                             as Fecha
+    FROM [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_LinkTable_*.qvd]
+    (qvd);
+
+/*---------*/
+NoConcatenate
+Calendario:
+    LOAD
+        Fecha                                               as SK.Fecha,
+        Fecha                                               as Calendario.Fecha,
+        Year(Fecha)&'-'&Num(Month(Fecha),'00')              as Calendario.Periodo,
+        Month(Fecha) 		                                as Calendario.Mes,
+        Year(Fecha) 		                                as Calendario.Año,
+        WeekDay(Fecha)      	                																				as Calendario.DiaSemana,
+        Week(Fecha)      	                    																				as Calendario.NumSemana,
+        Day(WeekStart(Fecha, 0))&' '&Month(WeekStart(Fecha, 0))&' al '&Day(WeekEnd(Fecha, 0))&' '&Month(WeekEnd(Fecha, 0))      as Calendario.Semana
+    Resident Calendario_Tmp;
+    Drop Table Calendario_Tmp;
+
+Store Calendario into [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Calendario.qvd];
+Drop Table Calendario;

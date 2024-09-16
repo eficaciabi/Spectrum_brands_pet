@@ -1,0 +1,48 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		     Transformacion Sugeridos
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			21/09/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Sugeridos_Tmp:
+     LOAD 
+          CANTIDAD            as Cantidad, 
+          PRECIO_TOTAL		as PrecioTotal,  
+          ID_PRODUCTO		as IdProducto,
+          ID_SUCURSAL		as IdSucursal, 
+          ID_ASESOR			as IdAsesor, 
+          FECHA_CAPTURA		as _Fecha
+     FROM
+     [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET\Sugeridos_$(Anno)$(Mes)*.qvd]
+     (qvd);
+
+NoConcatenate
+Sugeridos_Tmp1:
+     LOAD
+          Cantidad, 
+          PrecioTotal,
+          IdProducto, 
+          IdSucursal,
+          IdAsesor, 
+          Date(left(date(_Fecha,'DD/MM/YYYY'),10),'YYYY/MM/DD')	as Fecha
+     Resident Sugeridos_Tmp
+     Where
+          IdAsesor<>'169710';
+     DROP Table Sugeridos_Tmp;
+
+NoConcatenate 
+Sugeridos:
+     LOAD
+          IdSucursal&'-'&IdAsesor&'-'&IdProducto&'-'&Fecha       as CK.Key2,
+          Cantidad										as Sugeridos.Cantidad, 
+          PrecioTotal									as Sugeridos.PrecioTotal,
+          IdProducto									as Sugeridos.IdProducto, 
+          IdSucursal									as Sugeridos.IdSucursal,
+          IdAsesor										as Sugeridos.IdAsesor, 
+          Fecha										as Sugeridos.Fecha
+     Resident Sugeridos_Tmp1;
+     Drop Table Sugeridos_Tmp1;
+
+STORE Sugeridos INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Sugeridos_$(Anno)$(Mes).qvd];
+Drop Table Sugeridos;

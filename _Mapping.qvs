@@ -1,0 +1,119 @@
+﻿Map_Canal:
+	Mapping
+		load
+			SK.PuntoVenta		as IdPuntoVenta,
+			PuntoVenta.Canal				as Canal
+        FROM
+        [lib://COMP_DataMart (eficacia_admin_analitica)\SGI\Colombia\SPECTRUM_BRANDS_PET\_PuntoVenta.qvd]
+        (qvd);
+
+Map_Regional:
+	Mapping
+		load
+			SK.PuntoVenta		    as IdPuntoVenta,
+			PuntoVenta.Regional		as Regional
+        FROM
+        [lib://COMP_DataMart (eficacia_admin_analitica)\SGI\Colombia\SPECTRUM_BRANDS_PET\_PuntoVenta.qvd]
+        (qvd);
+
+Map_Cadena:
+	Mapping
+		load
+			SK.PuntoVenta		    as IdPuntoVenta,
+			PuntoVenta.Cadena		as Cadena
+        FROM
+        [lib://COMP_DataMart (eficacia_admin_analitica)\SGI\Colombia\SPECTRUM_BRANDS_PET\_PuntoVenta.qvd]
+        (qvd);
+
+Map_Marca:
+    Mapping
+        LOAD
+            SK.Producto,
+            Producto.Marca
+        FROM
+        [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Producto.qvd]
+        (qvd);        
+
+Map_TipoEmpresa:
+    Mapping
+        LOAD
+            SK.Producto,
+            Producto.TipoEmpresa
+        FROM
+        [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Producto.qvd]
+        (qvd);
+
+Map_FotoMarca:
+    Mapping
+        LOAD
+            Producto.Marca,
+            Producto.Logo
+        FROM
+        [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Producto.qvd]
+        (qvd);
+
+Map_Linea:
+    Mapping
+        LOAD
+            SK.Producto,
+            Producto.Linea
+        FROM
+        [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Producto.qvd]
+        (qvd);
+
+
+Map_MarcaCompetencia:
+    Mapping
+        LOAD 
+	      Marca, 
+          MarcaCompetencia
+        FROM
+        [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Sh_MarcaEspejo.qvd]
+        (qvd);        
+
+/*----Used: _Precios ----*/
+
+Map_ID_Marca:
+    Mapping
+        LOAD
+            PRODUCTO_ID,
+            MARCA_ID
+        FROM
+        [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/IPV_Producto.qvd]
+        (qvd);  
+
+Map_Id_Regional:
+    Mapping
+        LOAD
+            PUNTO_VENTA_ID,
+            DEPARTAMENTO_ID
+        FROM
+        [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/IPV_PuntoVenta.qvd]
+        (qvd);  
+
+Map_ID_Cadena:
+    Mapping
+        LOAD
+            PUNTO_VENTA_ID,
+            ID_CADENA
+        FROM
+        [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/IPV_PuntoVenta.qvd]
+        (qvd);              
+
+Map_IdMarca_Competencia:
+	Mapping
+		LOAD 
+			Id_Marca_propia, 
+            Id_Marca_Competencia as IdMarcaCompetencia
+        FROM
+        [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Sh_MarcaEspejo.qvd]
+        (qvd); 
+
+Map_IdMarca_Propio:
+	Mapping
+		LOAD
+			Id_Marca_Competencia as IdMarcaCompetencia, 
+            Id_Marca_propia
+        FROM
+        [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Sh_MarcaEspejo.qvd]
+        (qvd); 

@@ -1,0 +1,81 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Productos IPV
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			2023/08/16 (YYYY/MM/DD)
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+NoConcatenate
+Fotos:
+    LOAD * Inline [
+        Marca , Foto ,
+        Autan , "https://c.perfumesclub.com/images_web/brands/white/1119.svg" ,  
+        Bacterion , "https://recamier.com/wp-content/uploads/2022/07/R-Bacterion.png" , 
+        Baygon , "https://proserlim.pe/wp-content/uploads/2020/02/download-1-150x150.png" ,
+        Bichek , "https://lh3.googleusercontent.com/proxy/4JT6x3Is063riJz70V25cnbkNC6viy08t2z96x5wYYYC2ECW1mYqp3lrbvsZ26O3NGLS7MyWgMFy5GS-xRYuKZOYyA" ,
+        Black Flag , "https://blackflag.la/wp-content/uploads/2021/06/logo_cucaracha.png" ,
+        Exito , "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Almacenes_exito_logo.svg/2048px-Almacenes_exito_logo.svg.png" ,
+        Extermin , "https://extermin.co/wp-content/uploads/2020/06/logo-sinpuntos-extermin.png" ,
+        Katori , "https://b2bmarketplace.procolombia.co/sites/default/files/styles/max_325x325/public/companies/a_5.jpg" ,
+        Nopikex , "https://megaseo170.com/cdn/shop/files/7703644001039-nopikex-mfinal-cmyk.jpg?v=1712712092" ,
+        Raid , "https://distribuidoraelarte.com.py/wp-content/uploads/2023/10/RAID-LOGO.png" ,
+        Rapid Repel , "https://rapidrepelca.com/rapidrepel.png" ,
+        Rayol , "https://www.cofarma.com/wp-content/uploads/2018/09/marca-33.png" ,
+        Stay Off , "https://offcolombia.com.co/-/media/images/off/co---stayoff/stay-off-logo.png" ,
+        Done , "https://vixark.b-cdn.net/lp-i-i-g/insecticida-multiacci%C3%B3n-done-250ml.jpg" , 
+        Surtimax ,  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTxXrZQacFO1evXlCfbUgGeRffFgJ6xnMeqqQ&s"
+
+        ];
+
+Map_Foto:
+Mapping
+    LOAD
+        Marca,
+        Foto
+    Resident Fotos;
+    Drop Table Fotos;
+
+Producto_Tmp1:
+    LOAD
+        PRODUCTO_ID     as Id_Producto,
+        MARCA           as Marca,
+        LINEA           as Linea,
+        DESCRIPCION     as Descripcion,
+        EMPRESA         as Empresa,
+        CATEGORIA		as Categoria,
+        COMPETENCIA     as TipoEmpresa
+    FROM
+    [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/IPV_Producto.qvd]
+    (qvd);
+
+/*----------*/
+NoConcatenate
+Producto_Tmp2:
+    LOAD
+        Id_Producto,
+        Capitalize(Marca)           as Marca,
+        Capitalize(Linea)           as Linea,
+        Capitalize(Descripcion)     as Descripcion,
+        Capitalize(Empresa)         as Empresa,
+        Capitalize(Categoria)		as Categoria,
+        Capitalize(TipoEmpresa)		as TipoEmpresa
+    Resident Producto_Tmp1;
+    Drop Table Producto_Tmp1;
+
+/*----------*/
+NoConcatenate
+Producto:
+    LOAD
+        Id_Producto         as SK.Producto,
+        Marca               as Producto.Marca,
+        Linea               as Producto.Linea,
+        Descripcion         as Producto.Descripcion,
+        Empresa             as Producto.Empresa,
+        Categoria			as Producto.Categoria,
+        TipoEmpresa         as Producto.TipoEmpresa,
+        ApplyMap('Map_Foto', Marca, Null())		as Producto.Logo
+    Resident Producto_Tmp2;
+    Drop Table Producto_Tmp2; 
+
+STORE Producto INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Producto.qvd];
+Drop Table Producto;

@@ -1,0 +1,259 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Cobertura
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			28/08/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Rutero_Tmp:
+     LOAD  
+          ID_PUNTO_VENTA				     as IdPuntoVenta, 
+          ID_PERSONAL					as IdPersona, 
+          FECHA_DE_EJECUCION			     as _Fecha, 
+          ESTADO						as Estado, 
+          MINUTOS						as Minutos
+     FROM
+     [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Rutero_$(Anno)$(Mes).qvd]
+     (qvd);
+
+Visitas_Tmp:
+     LOAD 
+          EFECTIVIDAD						as Efectividad, 
+          ESTADO							as Estado, 
+          ID_PV							as IdPuntoVenta, 
+          ID_ASESOR							as IdPersona, 
+          FECHA_INICIAL_FILTRO				as _Fecha,
+          HORA_FINAL						as HoraSalida, 
+          FECHA_INICIAL_FILTRO				as HoraIngreso, 
+          ID_REGISTRO
+     FROM
+     [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/EfectividadVisitas_$(Anno)$(Mes)*.qvd]
+     (qvd);
+
+/*---------*/
+NoConcatenate
+Rutero_Tmp1:
+     LOAD
+          IdPuntoVenta, 
+          IdPersona, 
+          DATE(LEFT(_Fecha, 10), 'YYYY/MM/DD') as Fecha, 
+          Estado, 
+          Minutos
+     Resident Rutero_Tmp
+     Where
+          Estado = 1
+     and not WildMatch(IdPersona, '169710', '169697');
+     DROP Table Rutero_Tmp;
+
+/*---------*/
+NoConcatenate
+Visitas_Tmp1:
+     LOAD
+          Efectividad, 
+          Estado, 
+          IdPuntoVenta,  
+          IdPersona, 
+          Date(Right(HoraIngreso,10), 'hh:mm:ss')				 as HoraDeIngreso,
+          Date(Right(HoraSalida,8), 'hh:mm:ss')				 as HoraDeSalida,	
+          DATE(LEFT(Date(_Fecha, 'DD/MM/YYYY'),10), 'YYYY/MM/DD') as Fecha
+     Resident Visitas_Tmp
+     Where
+     not WildMatch(IdPersona, '169710', '169697');
+     DROP Table Visitas_Tmp;
+
+/*---------*/
+NoConcatenate
+CumpleVisita_Tmp1:
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		     as CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          'Cumple Visita'					as Concepto
+     Resident Rutero_Tmp1;
+
+Inner Join
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		     as CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          HoraDeIngreso,
+          HoraDeSalida, 
+          'Cumple Visita'					as Concepto
+     Resident Visitas_Tmp1;
+
+/*---------*/
+NoConcatenate
+Rutero_Tmp:
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		     as CK.KeyRutero
+     Resident Rutero_Tmp1;
+
+NoConcatenate
+ExtraRuta_Tmp1:
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		     as CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          HoraDeIngreso,
+          HoraDeSalida, 
+          'Extra Ruta'						as Concepto
+     Resident Visitas_Tmp1
+     Where
+          Not Exists(CK.KeyRutero,IdPuntoVenta&IdPersona&Fecha);
+     DROP Table Rutero_Tmp;
+
+/*---------*/
+NoConcatenate
+PlaneadosVisitar_Tmp:
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		     as CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          'Visitas Planeadas'				     as Concepto
+     Resident Rutero_Tmp1
+     Where
+          Fecha >= Date(Today(),'YYYY/MM/DD');
+
+/*---------*/
+NoConcatenate
+RuteroVencido_Tmp1:
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		     as CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha
+     Resident Rutero_Tmp1
+     Where 
+          Fecha < Date(Today(),'YYYY/MM/DD');
+     DROP Table Rutero_Tmp1;
+
+NoConcatenate
+Visitas_Tmp:
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		     as CK.Visitas
+     Resident Visitas_Tmp1;
+
+NoConcatenate
+RuteroVencido_Tmp2:
+     LOAD
+          CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          'Visitas No ejecutadas'			     as Concepto
+     Resident RuteroVencido_Tmp1
+     Where
+          Not Exists(CK.Visitas,CK.Key);
+     DROP Table RuteroVencido_Tmp1;
+     DROP Table Visitas_Tmp;
+
+/*---------*/
+NoConcatenate
+Cobertura_Tmp1:
+     LOAD
+          CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          HoraDeIngreso,
+          HoraDeSalida, 
+          Concepto
+     Resident CumpleVisita_Tmp1;
+     DROP Table CumpleVisita_Tmp1;
+
+Concatenate
+     LOAD
+          CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          HoraDeIngreso,
+          HoraDeSalida, 
+          Concepto
+     Resident ExtraRuta_Tmp1;
+     DROP Table ExtraRuta_Tmp1;
+
+Concatenate
+     LOAD
+          CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          Concepto
+     Resident PlaneadosVisitar_Tmp;
+     DROP Table PlaneadosVisitar_Tmp;
+
+Concatenate
+     LOAD
+          CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          Concepto
+     Resident RuteroVencido_Tmp2;
+     DROP Table RuteroVencido_Tmp2;
+
+/*---------*/
+NoConcatenate
+Cobertura_Tmp2:
+     LOAD
+          CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          HoraDeIngreso,
+          HoraDeSalida, 
+          Concepto
+     Resident Cobertura_Tmp1;
+     DROP Table Cobertura_Tmp1;
+
+Left Join (Cobertura_Tmp2)
+     LOAD
+          IdPuntoVenta&IdPersona&Fecha		as CK.Key,
+          Efectividad,
+          Estado
+     Resident Visitas_Tmp1;
+     DROP Table Visitas_Tmp1;  
+
+NoConcatenate
+Cobertura_Tmp3:
+LOAD
+		  CK.Key,
+          IdPuntoVenta,  
+          IdPersona,
+          Fecha,
+          Concepto,
+          Efectividad,
+          HoraDeIngreso,
+          HoraDeSalida,
+          Date(HoraDeSalida-HoraDeIngreso, 'hh:mm:ss')          as TotalHoras,                                                  
+          If(Estado='ACOMPAÑAMIENTO RTC' or Estado= 'CAMBIO DE RUTA PARA CUBRIR PUNTOS' Or Estado= 'CAMBIO DE RUTA ESTRATEGIA COMERCIAL', 'CAMBIO DE RUTA', 
+          If(Estado= 'PERMISO AUTORIZADO POR LA COORDINADORA' Or Estado= 'REUNION DE CICLO' Or Estado='DIA COMPENSATORIO' Or Estado='GAZETTA' Or Estado='ALINEACIÓN CON LIDER' Or Estado= 'INCAPACIDAD', 'ADMINISTRATIVO', 
+          If(Estado= 'PUNTO DE VENTA CERRADO', 'PDV CERRADO', If(Estado= 'NO AUTORIZAN EL INGRESO DEL PROMOTOR ', 'NO AUTORIZAN INGRESO AL PDV', IF(Estado= 'PROBLEMAS DE ORDEN PUBLICO' Or Estado= 'NOVEDAD AJENA A LA RUTA', 'NOVEDAD AJENA A LA RUTA', Estado)))))			as Estado
+Resident Cobertura_Tmp2;
+DROP Table  Cobertura_Tmp2;   
+
+/*---------*/
+NoConcatenate
+Cobertura:
+     LOAD Distinct
+          IdPuntoVenta&'-'&IdPersona&'-'&Fecha    as CK.Key1,
+          CK.Key							as Cobertura.Registros,
+          IdPuntoVenta						as Cobertura.IdPuntoVenta,  
+          IdPersona							as Cobertura.IdPersona,
+          Fecha							as Cobertura.Fecha,
+          HoraDeIngreso                           as Cobertura.HoraDeIngreso,
+          HoraDeSalida                            as Cobertura.HoraDeSalida,
+          TotalHoras                              as Cobertura.TotalHoras,
+          Concepto							as Cobertura.Concepto,                                                                    
+          Efectividad						as Cobertura.Efectividad,
+          Estado							as Cobertura.Estado
+     Resident Cobertura_Tmp3;
+     Drop Table Cobertura_Tmp3;
+
+STORE Cobertura INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Cobertura_$(Anno)$(Mes).qvd];
+Drop Table Cobertura;

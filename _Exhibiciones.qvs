@@ -1,0 +1,64 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Exhibiciones
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			04/09/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Exhibiciones_Tmp1:
+	LOAD 	
+		EMPRESA					as Empresa,
+		CATEGORIA				as Categoria,
+		MARCA					as Marca,
+		TIPO_ACTIVIDAD			as Tipo_Actividad,
+		OBSERVACIONES			as Observaciones,
+		SUBTIPO_ACTIVIDAD		as Subtipo_Actividad,
+		ID_SUCURSAL				as Id_Sucursal,
+		ID_USUARIO				as Id_Usuario,
+		FECHA_VISITA			as _Fecha_Visita,
+		ID_REGISTRO				as ID_Registro,
+		NOMBRE_ARCHIVO			as Url_Captura
+	FROM
+	[lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Actividades_$(Anno)$(Mes)*.qvd]
+	(qvd);
+
+NoConcatenate
+Exhibiciones_Tmp2:
+	LOAD
+		Upper(Empresa)																										                        as Empresa,
+		Upper(Categoria)																									                        as Categoria,
+		Upper(Marca)																										                        as Marca,
+		Upper(Observaciones)																								                        as Observaciones,
+		Upper(Subtipo_Actividad)																							                        as Subtipo_Actividad,
+		Id_Sucursal,
+		Id_Usuario,
+		DATE(left(date(_Fecha_Visita,'DD/MM/YYYY'),10),'YYYY/MM/DD')														                        as Fecha,
+		ID_Registro,
+		If(Tipo_Actividad= 'EXHIBICIONES COMPETENCIA' or Tipo_Actividad= 'EXHIBICIONES ADICIONALES', 'EXHIBICIONES COMPETENCIA', Tipo_Actividad)	as Tipo_Actividad,
+		'$(RutaServerUno)'&Date(_Fecha_Visita,'YYYY')&'/'&Date(_Fecha_Visita,'MM')&'/'&$(vCodCliente)&'/'&Url_Captura		                        as Url_Captura
+	Resident Exhibiciones_Tmp1
+	Where
+		Not WildMatch(Tipo_Actividad, 'ACTIVIDADES COMPETENCIA', 'ACTIVIDADES PROPIAS')
+	and not WildMatch(Id_Usuario, '169710', '169697');
+	DROP Table Exhibiciones_Tmp1;
+	
+NoConcatenate
+Exhibiciones:
+	LOAD
+		Id_Sucursal&'-'&Id_Usuario&'-'&Fecha	as CK.Key1,
+		Empresa									as Exhibiciones.Empresa,
+		Categoria								as Exhibiciones.Categoria,
+		Marca									as Exhibiciones.Marca,
+		Tipo_Actividad							as Exhibiciones.Tipo_Actividad,
+		Observaciones							as Exhibiciones.Observaciones,
+		Subtipo_Actividad						as Exhibiciones.Subtipo_Actividad,
+		Id_Sucursal								as Exhibiciones.Id_Sucursal,
+		Id_Usuario								as Exhibiciones.Id_Usuario,
+		Fecha									as Exhibiciones.Fecha,
+		ID_Registro								as Exhibiciones.ID_Registro,
+		Url_Captura								as Exhibiciones.Url_Captura
+	Resident Exhibiciones_Tmp2;
+	DROP Table Exhibiciones_Tmp2;
+
+STORE Exhibiciones INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Exhibiciones_$(Anno)$(Mes).qvd];
+Drop Table Exhibiciones;

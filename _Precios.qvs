@@ -1,0 +1,96 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Precios
+Desarrollador: 	Juan Camilo Domínguez Pacheco
+Email:			juanc_dominguez@eficacia.com.co
+Fecha			2024/02/12 (YYYY/MM/DD)
+Estado: 		Activo
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+ExcluirPrecios:
+     LOAD 
+          IDSucursal&IDAsesor&IDProducto&Date(Fecha, 'YYYY/MM/DD hh:mm:ss')			as CK.ExcluirPrecios
+     FROM 
+     [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/$(vNomCliente)/Sh_ExcluirPrecios.qvd] 
+     (qvd);
+
+Precios_Tmp1:
+	LOAD
+		ID_SUCURSAL 				as IdSucursal, 
+		ID_SUPERVISOR				as IdPersonal,
+		ID_PRODUCTO 				as IdProducto,
+		FECHA_INICIAL				as _Fecha,
+		TIPO_PROMOCION				as TipoPromocion,
+		OBSERVACION					as Observacion,
+		PRODUCTO					as Producto,
+		PRECIO						as Valor
+	FROM
+	[lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/$(vNomCliente)/Precios_$(Anno)$(Mes)*.qvd]
+	(qvd);
+
+/*---------*/	
+NoConcatenate
+Precios_Tmp2:
+	LOAD
+		IdSucursal, 
+		IdPersonal,
+		IdProducto,
+		DATE(left(date(_Fecha,'DD/MM/YYYY'),10),'YYYY/MM/DD')	as Fecha,	
+		Capitalize(Producto)									as Producto,
+		IF(isnull(TipoPromocion),'PRECIO REGULAR','PRECIO EN PROMOCIÓN') as TipoPromocion,
+		Observacion,
+		Num#(Valor)											    as Precio		
+	Resident Precios_Tmp1
+	Where
+	    (NOT WildMatch(Valor, 'Agotado', 'No Manejante', 'NP')
+		and Num#(Valor) > 0)
+		and Not Exists(CK.ExcluirPrecios, IdSucursal&IdPersonal&IdProducto&DATE(_Fecha, 'YYYY/MM/DD hh:mm:ss'));
+	Drop Table Precios_Tmp1;
+	Drop Table ExcluirPrecios;
+
+/*---------*/	
+NoConcatenate
+Precios_Tmp3:
+	LOAD
+		IdProducto,
+		Mode(Precio)		as Precio_Moda,
+		Avg(Precio)			as Precio_Promedio
+	Resident Precios_Tmp2
+	Group By
+		IdProducto;
+
+Left Join(Precios_Tmp3)
+	LOAD
+		IdSucursal, 
+		IdPersonal,
+		IdProducto,
+		Fecha,	
+		Producto,
+		TipoPromocion,
+		Observacion,
+		Precio
+	Resident Precios_Tmp2;
+	Drop Table Precios_Tmp2;
+
+/*---------*/
+NoConcatenate
+Precios:
+    LOAD Distinct
+        IdSucursal&'-'&IdPersonal&'-'&IdProducto&'-'&Fecha      									as CK.Key2,
+        IdSucursal			                                    									as Precios.Id_Sucursal,
+        IdPersonal			                                    									as Precios.Id_Usuario,
+        IdProducto			                                    									as Precios.IdProducto,
+		Fecha	                                                									as Precios.Fecha,
+		TipoPromocion																				as Precios.TipoPromocion,
+		Observacion																					as Precios.Observacion,
+        Precio					                                									as Precios.Precio,
+		Precio_Moda                                             									as Precios.Precio_Moda,
+		Precio_Promedio                                         									as Precios.Precio_Promedio,
+		ApplyMap('Map_Linea', IdProducto, Null())													as Precios.Linea,
+		IdSucursal&'-'&IdPersonal&'-'&ApplyMap('Map_Marca', IdProducto, Null())&'-'&year(Fecha)&num(Month(Fecha),'00')				as SK.Precios 
+    Resident Precios_Tmp3;
+    Drop Table Precios_Tmp3;
+
+STORE Precios INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Precios_$(Anno)$(Mes).qvd];
+Drop Table Precios;
+
+

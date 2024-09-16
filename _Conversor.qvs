@@ -1,0 +1,42 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		     Conversor Spectrum_Brands_Pet QR Sharepoint-QVD
+Desarrollador: 	Sergio Grisales
+Fecha			2023/09/26 (YYYY/MM/DD)
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Sh_Sugeridos:
+     LOAD 
+          IDASESOR				as IdAsesor, 
+          ASESOR					as Asesor, 
+          CUOTA					as Cuota
+     FROM [lib://COMP_SharePoint_Internal (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/SB PET - Cuotas Sugeridos.xlsx]
+     (ooxml, embedded labels, table is Hoja1);
+
+STORE Sh_Sugeridos INTO [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Sh_Cuotas_Sugeridos.qvd] (qvd);
+Drop Table Sh_Sugeridos;
+
+ExcluirPrecios:
+     LOAD 
+          [ID SUCURSAL]				as IDSucursal, 
+          [ID SUPERVISOR]			as IDAsesor, 
+          [FECHA INICIAL]			as Fecha,
+          [ID PRODUCTO]                 as IDProducto
+     FROM [lib://COMP_SharePoint_Internal (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/Registros Erroneos H&G Precios.xlsx]
+     (ooxml, embedded labels, table is Hoja1);
+
+STORE ExcluirPrecios INTO [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Sh_ExcluirPrecios.qvd] (qvd);
+Drop Table ExcluirPrecios;
+
+MarcaEspejo:
+     LOAD 
+          LINEA                     as Linea, 
+          [MARCA PROPIA]			 as Marca,
+          [ID MARCA PROPIA]         as Id_Marca_propia,
+          [MARCA COMPETENCIA]		 as MarcaCompetencia,
+          [ID MARCA COMPETENCIA]    as Id_Marca_Competencia
+          
+     FROM [lib://COMP_SharePoint_Internal (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/MARCA ESPEJO.xlsx]
+     (ooxml, embedded labels, table is Hoja1);
+
+STORE MarcaEspejo INTO [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Sh_MarcaEspejo.qvd] (qvd);
+Drop Table MarcaEspejo;

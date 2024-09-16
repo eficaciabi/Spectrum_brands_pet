@@ -1,0 +1,67 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Puntos de Venta IPV
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			16/08/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+PuntoVenta_Tmp1:
+    LOAD
+        PUNTO_VENTA_ID      as Id_Sucursal,
+        CIUDAD_ID			as Id_Ciudad,
+        DEPARTAMENTO_ID		as Id_Dpto,
+        CIUDAD				as NombreCiudad,
+        DIRECCION			as Direccion,
+        OBSERVACIONES		as Observaciones,
+        NOMBRE				as Nombre_Pdv,
+        FORMATO             as Formato,
+        CADENA				as Cadena,
+        CANAL				as Canal,
+        LATITUD             as Latitud, 
+        LONGITUD            as Longitud,
+        TIPOLOGIA			as Tipologia,
+        REGIONAL			as Regional
+    FROM
+    [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/IPV_PuntoVenta.qvd]
+    (qvd);
+
+/*----------*/
+NoConcatenate
+PuntoVenta_Tmp2:
+    LOAD Distinct
+        Id_Sucursal,
+        Upper(NombreCiudad)     as NombreCiudad,
+        Observaciones,
+        Direccion,
+        Id_Ciudad,
+        Id_Dpto,
+        Replace(text(Latitud),'.',',')	as Latitud,
+        Replace(text(Longitud),'.',',')	as Longitud,
+        Upper(Nombre_Pdv)       as Nombre_Pdv,
+        Upper(Formato)           as Formato,
+        Upper(Cadena)           as Cadena,        
+        Upper(Canal)            as Canal,
+        Upper(Tipologia)        as Tipologia,
+        Upper(Regional)         as Regional
+    Resident PuntoVenta_Tmp1;
+    DROP Table PuntoVenta_Tmp1;
+
+/*----------*/
+NoConcatenate
+PuntoVenta:
+    LOAD
+        Id_Sucursal		    as SK.PuntoVenta,
+        NombreCiudad		as PuntoVenta.NombreCiudad,
+        Nombre_Pdv			as PuntoVenta.Nombre_Pdv,
+        Formato				as PuntoVenta.Formato,
+        Cadena				as PuntoVenta.Cadena,        
+        Latitud             as PuntoVenta.Latitud, 
+        Longitud            as PuntoVenta.Longitud,
+        Canal				as PuntoVenta.Canal,
+        Tipologia			as PuntoVenta.Tipologia,
+        Regional			as PuntoVenta.Regional
+    Resident PuntoVenta_Tmp2;
+    DROP Table PuntoVenta_Tmp2;
+
+Store PuntoVenta into [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_PuntoVenta.qvd];
+Drop Table PuntoVenta;

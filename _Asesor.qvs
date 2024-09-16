@@ -1,0 +1,39 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Asesor IPV
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			16/08/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Asesor_Tmp1:
+    LOAD
+        ASESOR_ID   as Id_Usuario,
+        NOMBRE      as Nombre,
+        APELLIDO    as Apellido,
+        ROL         as Rol
+    FROM
+    [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/IPV_Asesor.qvd]
+    (qvd);
+
+/*----------*/
+NoConcatenate
+Asesor_Tmp2:
+    LOAD
+        Id_Usuario,
+        Rol,
+        Capitalize(Nombre&' '&Apellido)     as NombreCompleto
+    Resident Asesor_Tmp1;
+    Drop Table Asesor_Tmp1;
+
+/*----------*/
+NoConcatenate
+Asesor:
+    LOAD
+        Id_Usuario          as SK.Persona,
+        Rol                 as Asesor.Rol,
+        NombreCompleto      as Asesor.NombreCompleto
+    Resident Asesor_Tmp2;
+    Drop Table Asesor_Tmp2;
+
+Store Asesor into [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Asesor.qvd];
+Drop Table Asesor;

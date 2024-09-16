@@ -1,0 +1,19 @@
+Sh_Sugeridos:
+    LOAD 
+        IdAsesor, 
+        Asesor,
+        Cuota
+    FROM [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/Sh_Cuotas_Sugeridos.qvd]
+    (qvd);
+
+NoConcatenate
+Sh_Sugeridosh:
+    LOAD
+        IdAsesor                   as Sh_Sugeridosh.IdAsesor, 
+        Asesor                     as Sh_Sugeridosh.Asesor,
+        Cuota                      as Sh_Sugeridosh.Cuota
+    Resident Sh_Sugeridos;
+    Drop table Sh_Sugeridos;
+
+STORE Sh_Sugeridosh INTO [lib://COMP_Model (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/Modelo/_Sh_Sugeridosh.csv](txt, delimiter is '|');
+Drop Table Sh_Sugeridosh;

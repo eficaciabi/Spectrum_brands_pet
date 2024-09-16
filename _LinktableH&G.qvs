@@ -1,0 +1,168 @@
+﻿
+/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		LinkTable
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			16/08/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Marca_Espejo:
+LOAD  
+    Marca,
+	Id_Marca_propia, 
+    MarcaCompetencia,
+    Id_Marca_Competencia         
+FROM
+[lib://COMP_Stage (eficacia_admin_analitica)/SGI\Colombia/SPECTRUM BRANDS PET/Sh_MarcaEspejo.qvd]
+(qvd);
+
+/*---------*/
+LinkTable_Tmp1:
+    LOAD DISTINCT
+        Agotados.Id_Producto    as LinkTable.Id_Producto,
+        Agotados.Id_Sucursal    as LinkTable.IdPuntoVenta,
+        Agotados.Id_Usuario     as LinkTable.IdPersona,
+        Agotados.Fecha          as LinkTable.Fecha
+    FROM 
+    [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Agotados_$(Anno)$(Mes).qvd]
+    (qvd);
+
+Concatenate
+    LOAD DISTINCT
+        Sugeridos.IdProducto     as LinkTable.Id_Producto,
+        Sugeridos.IdSucursal     as LinkTable.IdPuntoVenta,
+        Sugeridos.IdAsesor       as LinkTable.IdPersona,
+        Sugeridos.Fecha          as LinkTable.Fecha
+    FROM 
+    [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Sugeridos_$(Anno)$(Mes).qvd]
+    (qvd);
+
+Concatenate
+    LOAD DISTINCT
+        Precios.Id_Sucursal                 as LinkTable.IdPuntoVenta,
+        Precios.Id_Usuario                  as LinkTable.IdPersona,
+        Precios.IdProducto                  as LinkTable.Id_Producto,
+		Precios.Fecha                       as LinkTable.Fecha
+    FROM 
+    [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Precios_$(Anno)$(Mes).qvd]
+    (qvd);
+
+/*---------*/
+NoConcatenate
+LinkTable_Tmp2:
+    LOAD DISTINCT
+        Actividades.Id_Sucursal       	            as LinkTable.IdPuntoVenta,
+        Actividades.Id_Usuario        	            as LinkTable.IdPersona,
+        Actividades.Fecha             	            as LinkTable.Fecha
+    FROM [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Actividades_$(Anno)$(Mes).qvd]
+    (qvd);
+
+Concatenate
+    LOAD DISTINCT
+        Exhibiciones.Id_Sucursal       	            as LinkTable.IdPuntoVenta,
+        Exhibiciones.Id_Usuario        	            as LinkTable.IdPersona,
+        Exhibiciones.Fecha             	            as LinkTable.Fecha
+    FROM [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Exhibiciones_$(Anno)$(Mes).qvd]
+    (qvd);
+
+Concatenate
+    LOAD DISTINCT
+        Participacion.Id_Sucursal       	            as LinkTable.IdPuntoVenta,
+        Participacion.Id_Usuario        	            as LinkTable.IdPersona,
+        Participacion.Fecha             	            as LinkTable.Fecha
+    FROM [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Participacion_$(Anno)$(Mes).qvd]
+    (qvd);
+
+Concatenate
+    LOAD DISTINCT
+        Cobertura.IdPuntoVenta                       as LinkTable.IdPuntoVenta,
+        Cobertura.IdPersona                          as LinkTable.IdPersona,
+        Cobertura.Fecha                              as LinkTable.Fecha
+    FROM [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Cobertura_$(Anno)$(Mes).qvd]
+    (qvd);
+
+/*---------*/
+LinkTable_Tmp3:
+    LOAD DISTINCT
+        PreciosCompetencia.Id_Sucursal                                              as LinkTable.IdPuntoVenta,
+        PreciosCompetencia.Id_Usuario                                               as LinkTable.IdPersona,
+        PreciosCompetencia.Id_Marca_propia                                          as LinkTable.Id_Marca,
+        PreciosCompetencia.Fecha             	                                    as LinkTable.Fecha
+    FROM 
+    [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_PreciosCompetencia_$(Anno)$(Mes).qvd]
+    (qvd);    
+
+/*---------*/
+NoConcatenate
+LinkTable_Tmp4:
+    LOAD Distinct
+        LinkTable.Fecha,
+        LinkTable.IdPuntoVenta,
+        LinkTable.IdPersona,
+        LinkTable.Id_Producto
+    Resident LinkTable_Tmp1; 
+    Drop Table LinkTable_Tmp1;
+
+Outer join (LinkTable_Tmp4)
+
+    LOAD Distinct
+        LinkTable.Fecha,
+        LinkTable.IdPuntoVenta,
+        LinkTable.IdPersona
+    Resident LinkTable_Tmp2; 
+    Drop Table LinkTable_Tmp2;   
+
+/*---------*/
+NoConcatenate
+LinkTable_Tmp:
+    LOAD Distinct
+        LinkTable.IdPuntoVenta,
+        LinkTable.IdPersona,
+        LinkTable.Id_Producto,
+        ApplyMap('Map_ID_Marca', LinkTable.Id_Producto, Null())		    as LinkTable.Id_Marca,
+        ApplyMap('Map_Id_Regional', LinkTable.IdPuntoVenta, Null())		as LinkTable.Id_Regional,
+        ApplyMap('Map_ID_Cadena', LinkTable.IdPuntoVenta, Null())		as LinkTable.Id_Cadena,
+        LinkTable.Fecha,
+        Year(LinkTable.Fecha)&'-'&Num(Month(LinkTable.Fecha),'00') 	    as LinkTable.Periodo
+    Resident LinkTable_Tmp4; 
+    Drop Table LinkTable_Tmp4;    
+
+Outer join (LinkTable_Tmp)
+
+    LOAD Distinct
+        LinkTable.IdPuntoVenta,
+        LinkTable.IdPersona,
+        LinkTable.Id_Marca,
+        LinkTable.Fecha,
+        Year(LinkTable.Fecha)&'-'&Num(Month(LinkTable.Fecha),'00') 	       as LinkTable.Periodo,
+        ApplyMap('Map_Id_Regional', LinkTable.IdPuntoVenta, Null())		   as LinkTable.Id_Regional,
+        ApplyMap('Map_ID_Cadena', LinkTable.IdPuntoVenta, Null())		   as LinkTable.Id_Cadena
+    Resident LinkTable_Tmp3; 
+    Drop Table LinkTable_Tmp3;
+
+Left Join (LinkTable_Tmp)    
+
+	LOAD
+		Id_Marca_propia          as LinkTable.Id_Marca,
+		Id_Marca_Competencia     as LinkTable.Id_Marca_Competencia
+    Resident Marca_Espejo; 
+    Drop Table Marca_Espejo;  
+     
+/*---------*/
+NoConcatenate
+LinkTable: 
+    LOAD
+        LinkTable.IdPuntoVenta&'-'&LinkTable.IdPersona&'-'&LinkTable.Fecha                                                  as CK.Key1,
+        LinkTable.IdPuntoVenta&'-'&LinkTable.IdPersona&'-'&LinkTable.Id_Producto&'-'&LinkTable.Fecha                        as CK.Key2,
+        LinkTable.Id_Regional&'-'&LinkTable.Id_Cadena&'-'&LinkTable.Id_Marca_Competencia&'-'&LinkTable.Periodo              as CK.Key3,        
+        LinkTable.Fecha                                                                                                     as SK.Fecha,
+        LinkTable.IdPuntoVenta                                                                                              as SK.PuntoVenta,
+        LinkTable.IdPersona                                                                                                 as SK.Persona,
+        LinkTable.Id_Producto                                                                                               as SK.Producto
+    Resident LinkTable_Tmp 
+    Where  
+        WildMatch(ApplyMap('Map_Canal',LinkTable.IdPuntoVenta,'CanalDesconocido'),'MODERNO H&G', 'TAT H&G', 'TRADICIONAL H&G', 'MAYORISTA H&G'); 
+    Drop Table LinkTable_Tmp;
+
+STORE LinkTable INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_LinkTableH&G_$(Anno)$(Mes).qvd];
+Drop Table LinkTable;

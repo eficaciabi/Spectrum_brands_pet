@@ -1,0 +1,107 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Actividades
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			02/10/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Participacion_Tmp1:
+	LOAD 
+		ID_SUCURSAL				as Id_Sucursal,
+		ID_USUARIO				as Id_Usuario,
+		FECHA_VISITA			as _Fecha,
+		SUBCATEGORIA			as SubCategoria,
+		CATEGORIA				as Categoria,
+		CANTIDAD_CARAS_CMS		as CantidadCaras_Cms,
+		MARCA					as Marca
+	FROM
+	[lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET\Participacion_$(Anno)$(Mes)*.qvd]
+	(qvd);
+
+NoConcatenate
+Participacion_Tmp2:
+	LOAD
+		Id_Sucursal,
+		Id_Usuario,
+		DATE(left(date(_Fecha,'DD/MM/YYYY'),10),'YYYY/MM/DD')				as Fecha,
+		Capitalize(SubCategoria)											as SubCategoria,
+		Capitalize(Categoria)												as Categoria,
+		CantidadCaras_Cms,
+		Capitalize(Marca)													as Marca
+	Resident Participacion_Tmp1;
+	DROP Table Participacion_Tmp1;
+
+NoConcatenate
+Participacion_Tmp3:
+	LOAD
+	    Id_Sucursal,
+		Id_Usuario,
+		year(Fecha)&Month(Fecha)											as Periodo,
+		Fecha,
+		SubCategoria,
+		Categoria,
+		CantidadCaras_Cms,
+		Marca,
+		'Marca Propia'				as TipoEmpresa
+	Resident Participacion_Tmp2
+	Where
+		WildMatch(Marca, 'Natures Miracles', 'Dreambone', 'Smart bones', 'Furminator', 'Dingo','Black Flag','Rapid Repel');
+
+Concatenate
+	LOAD
+		Id_Sucursal,
+		Id_Usuario,
+		year(Fecha)&Month(Fecha)											as Periodo,
+		Fecha,
+		SubCategoria,
+		Categoria,
+		CantidadCaras_Cms,
+		Marca,
+		'Competencia'				as TipoEmpresa
+	Resident Participacion_Tmp2
+	Where
+		Not WildMatch(Marca, 'Natures Miracles', 'Dreambone', 'Smart bones', 'Furminator', 'Dingo','Black Flag','Rapid Repel');
+	Drop Table Participacion_Tmp2;
+
+NoConcatenate
+Participacion_Tmp4:
+	LOAD
+		Id_Sucursal,
+		Periodo,
+		Max(Fecha)				as Fecha
+	Resident Participacion_Tmp3
+	Group By
+		Id_Sucursal,
+		Periodo;
+
+Left Join(Participacion_Tmp4)
+	LOAD
+		Id_Sucursal,
+	    Id_Usuario,
+	    Fecha,
+	    Periodo,
+	    SubCategoria,
+		Categoria,
+		CantidadCaras_Cms,
+		Marca,
+	    TipoEmpresa
+	Resident Participacion_Tmp3;
+	Drop Table Participacion_Tmp3;
+
+NoConcatenate
+Participacion:
+	LOAD
+		Id_Sucursal&'-'&Id_Usuario&'-'&Fecha	as CK.Key1,
+		Id_Sucursal								as Participacion.Id_Sucursal,
+		Id_Usuario								as Participacion.Id_Usuario,
+		Fecha									as Participacion.Fecha,
+		SubCategoria							as Participacion.SubCategoria,
+		Categoria								as Participacion.Categoria,
+		TipoEmpresa								as Participacion.TipoEmpresa,
+		CantidadCaras_Cms						as Participacion.CantidadCaras_Cms,
+		Marca									as Participacion.Marca
+	Resident Participacion_Tmp4;
+	DROP Table Participacion_Tmp4;
+
+STORE Participacion INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Participacion_$(Anno)$(Mes).qvd];
+Drop Table Participacion;

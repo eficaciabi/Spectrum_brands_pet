@@ -1,0 +1,142 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		     Transformacion Agotados
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			16/08/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Agotados_Tmp:
+     LOAD 
+          AGOTADO							as Agotado, 
+          PRESENTE							as Presente, 
+          NO_MANEJANTE						as No_Manejante, 
+          CAUSAL_AGOTADO						as CausalAgotado, 
+          ID_PRODUCTO						as Id_Producto, 
+          ID_SUCURSAL						as Id_Sucursal, 
+          ID_USUARIO						as Id_Usuario, 
+          FECHA_CAPTURA						as _Fecha, 
+          ID_REGISTRO						as Id_Registro
+     FROM
+     [lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Agotados_$(Anno)$(Mes)*.qvd]
+     (qvd);
+
+/*---------*/	
+NoConcatenate
+Agotados_Tmp1:
+     LOAD
+          Agotado, 
+          Presente, 
+          No_Manejante, 
+          Upper(CausalAgotado)											 as CausalAgotado, 
+          Id_Producto, 
+          Id_Sucursal, 
+          Id_Usuario, 
+          DATE(left(date(_Fecha,'YYYY-MM-DD'),10),'YYYY/MM/DD')                       as Fecha,
+          Id_Registro,
+          'AGOTADO'                                                                   as Concepto
+     Resident Agotados_Tmp
+     Where
+          Agotado=1
+     and not WildMatch(Id_Usuario, '169710', '169697');
+
+Concatenate
+     LOAD
+          Agotado, 
+          Presente, 
+          No_Manejante, 
+          Upper(CausalAgotado)											as CausalAgotado, 
+          Id_Producto, 
+          Id_Sucursal, 
+          Id_Usuario, 
+          DATE(left(date(_Fecha,'YYYY-MM-DD'),10),'YYYY/MM/DD')                      as Fecha,
+          Id_Registro,
+          'PRESENTE'                                                                 as Concepto
+     Resident Agotados_Tmp
+     Where
+          Presente=1
+     and not WildMatch(Id_Usuario, '169710', '169697');
+
+Concatenate
+     LOAD
+          Agotado, 
+          Presente, 
+          No_Manejante, 
+          Upper(CausalAgotado)										     as CausalAgotado, 
+          Id_Producto, 
+          Id_Sucursal, 
+          Id_Usuario, 
+          DATE(left(date(_Fecha,'YYYY-MM-DD'),10),'YYYY/MM/DD')                       as Fecha,                    
+          Id_Registro,
+          'NO_MANEJANTE'                                                             as Concepto
+     Resident Agotados_Tmp
+     Where
+          No_Manejante=1
+     and not WildMatch(Id_Usuario, '169710', '169697');
+     DROP Table Agotados_Tmp;
+
+/*---------*/	
+NoConcatenate
+Agotados_Tmp2:
+     LOAD
+          Id_Sucursal, 
+          Id_Usuario, 
+          Max(Fecha)		as Fecha
+     Resident Agotados_Tmp1
+     Group By
+          Id_Sucursal, 
+          Id_Usuario;
+
+Left Join(Agotados_Tmp2)
+     LOAD
+          Agotado, 
+          Presente, 
+          No_Manejante, 
+          CausalAgotado, 
+          Id_Producto, 
+          Id_Sucursal, 
+          Id_Usuario, 
+          Fecha,
+          Id_Registro,
+          Concepto
+     Resident Agotados_Tmp1;
+     DROP Table Agotados_Tmp1;
+
+/*---------*/	
+NoConcatenate
+Agotados_Tmp3:
+    LOAD 
+          Agotado, 
+          Presente, 
+          No_Manejante, 
+          CausalAgotado, 
+          Id_Producto, 
+          Id_Sucursal, 
+          Id_Usuario, 
+          Fecha,
+          Id_Registro,
+          Concepto
+     Resident Agotados_Tmp2
+     Where 
+         CausalAgotado <> 'NO CODIFICADO EN PDV';
+     Drop Table Agotados_Tmp2;
+
+/*---------*/	
+NoConcatenate
+Agotados:
+    LOAD DISTINCT
+          Id_Sucursal&'-'&Id_Usuario&'-'&Id_Producto&'-'&Fecha        as CK.Key2,
+          Agotado											as Agotados.Agotado, 
+          Presente											as Agotados.Presente, 
+          No_Manejante										as Agotados.No_Manejante, 
+          CausalAgotado										as Agotados.CausalAgotado, 
+          Id_Producto										as Agotados.Id_Producto, 
+          Id_Sucursal										as Agotados.Id_Sucursal, 
+          Id_Usuario										as Agotados.Id_Usuario, 
+          Fecha											as Agotados.Fecha,
+          Id_Registro										as Agotados.Id_Registro,
+          Concepto											as Agotados.Concepto
+     Resident Agotados_Tmp3;
+     Drop Table Agotados_Tmp3;
+
+STORE Agotados INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Agotados_$(Anno)$(Mes).qvd];
+Drop Table Agotados;

@@ -1,0 +1,64 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Actividades
+Desarrollador: 	Sergio Grisales
+Email:			sergio_grisales@Eficacia.com.co
+Fecha			18/08/2023 'DD/MM/YYYY'
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+Actividades_Tmp1:
+	LOAD 
+		EMPRESA					as Empresa,
+		CATEGORIA				as Categoria,
+		MARCA					as Marca,
+		TIPO_ACTIVIDAD			as Tipo_Actividad,
+		OBSERVACIONES			as Observaciones,
+		SUBTIPO_ACTIVIDAD		as Subtipo_Actividad,
+		ID_SUCURSAL				as Id_Sucursal,
+		ID_USUARIO				as Id_Usuario,
+		FECHA_VISITA			as _Fecha_Visita,
+		ID_REGISTRO				as ID_Registro,
+		NOMBRE_ARCHIVO			as Url_Captura
+	FROM
+	[lib://COMP_Stage (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM BRANDS PET/Actividades_$(Anno)$(Mes)*.qvd]
+	(qvd);
+
+NoConcatenate
+Actividades_Tmp2:
+	LOAD
+		Upper(Empresa)																										as Empresa,
+		Upper(Categoria)																									as Categoria,
+		Upper(Marca)																										as Marca,
+		Upper(Tipo_Actividad)																								as Tipo_Actividad,
+		Upper(Observaciones)																								as Observaciones,
+		Upper(Subtipo_Actividad)																							as Subtipo_Actividad,
+		Id_Sucursal,
+		Id_Usuario,
+		DATE(left(date(_Fecha_Visita,'DD/MM/YYYY'),10),'YYYY/MM/DD')														as Fecha,
+		ID_Registro,
+		'$(RutaServerUno)'&Date(_Fecha_Visita,'YYYY')&'/'&Date(_Fecha_Visita,'MM')&'/'&$(vCodCliente)&'/'&Url_Captura		as Url_Captura
+	Resident Actividades_Tmp1
+	Where
+		WildMatch(Tipo_Actividad, 'ACTIVIDADES COMPETENCIA', 'ACTIVIDADES PROPIAS')
+	And not WildMatch(Id_Usuario, '169710', '169697');
+	DROP Table Actividades_Tmp1;
+	
+NoConcatenate
+Actividades:
+	LOAD
+		Id_Sucursal&'-'&Id_Usuario&'-'&Fecha	as CK.Key1,
+		Empresa									as Actividades.Empresa,
+		Categoria								as Actividades.Categoria,
+		Marca									as Actividades.Marca,
+		Tipo_Actividad							as Actividades.Tipo_Actividad,
+		Observaciones							as Actividades.Observaciones,
+		Subtipo_Actividad						as Actividades.Subtipo_Actividad,
+		Id_Sucursal								as Actividades.Id_Sucursal,
+		Id_Usuario								as Actividades.Id_Usuario,
+		Fecha									as Actividades.Fecha,
+		ID_Registro								as Actividades.ID_Registro,
+		Url_Captura								as Actividades.Url_Captura
+	Resident Actividades_Tmp2;
+	DROP Table Actividades_Tmp2;
+
+STORE Actividades INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Actividades_$(Anno)$(Mes).qvd];
+Drop Table Actividades;

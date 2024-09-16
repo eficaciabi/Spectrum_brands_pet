@@ -1,0 +1,83 @@
+﻿/*-----------------------------------------------------------------------------------------------------------------------------------------------
+Compañia: 		Eficacia S.A
+Proceso:		Transformacion Comparativo Precios Marca
+Desarrollador: 	Daniel Alejandro Cerquera Castro
+Email:			daniel_cerquera@eficacia.com.co
+Fecha			2024/08/01 (YYYY/MM/DD)
+Estado: 		Activo
+-----------------------------------------------------------------------------------------------------------------------------------------------*/
+MarcaCompetencia_Tmp:
+LOAD 
+	Marca, 
+    MarcaCompetencia
+FROM
+[lib://COMP_Stage (eficacia_admin_analitica)/SGI\Colombia/SPECTRUM BRANDS PET/Sh_MarcaEspejo.qvd]
+(qvd);
+
+/*---------*/	
+PreciosCompetencia_Tmp1:
+	LOAD
+		CK.Key2,
+        Precios.Id_Sucursal											as Id_Sucursal,
+        Precios.Id_Usuario											as Id_Usuario,
+        Precios.IdProducto											as Id_Producto,
+		Precios.Fecha												as Fecha,
+		Precios.Precio												as Precio,
+		Precios.Linea												as Linea,
+		ApplyMap('Map_Marca', Precios.IdProducto, Null())			as Marca,
+		ApplyMap('Map_ID_Marca', Precios.IdProducto, Null())	    as Id_Marca
+	FROM 
+    [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_Precios_$(Anno)$(Mes)*.qvd]
+	(qvd);
+
+/*---------*/	
+NoConcatenate
+PreciosCompetencia_Tmp2:
+	LOAD
+        Id_Sucursal,
+        Id_Usuario,
+		Id_Producto,
+		Fecha,
+		Precio,
+		Linea,
+		Id_Marca,
+		Marca						                                    as MarcaCompetencia,
+		Year(Fecha)&'-'&Num(Month(Fecha),'00')                          as Periodo,	
+		ApplyMap('Map_IdMarca_Propio', Id_Marca, null())	            as IdMarca_Propia,
+		ApplyMap('Map_ID_Cadena', Id_Sucursal, Null())		            as Id_Cadena,
+		ApplyMap('Map_Id_Regional', Id_Sucursal, Null())		        as Id_Regional
+	Resident PreciosCompetencia_Tmp1
+	Where
+		ApplyMap('Map_TipoEmpresa', Id_Producto, Null()) = 1;
+	DROP Table PreciosCompetencia_Tmp1;	
+
+Left Join(PreciosCompetencia_Tmp2)
+	LOAD
+		MarcaCompetencia,
+		Marca
+	Resident MarcaCompetencia_Tmp;
+	DROP Table MarcaCompetencia_Tmp;
+
+/*---------*/		
+NoConcatenate
+PreciosCompetencia:
+	LOAD
+		Id_Regional&'-'&Id_Cadena&'-'&Id_Marca&'-'&Periodo          as CK.Key3,
+		Id_Sucursal													as PreciosCompetencia.Id_Sucursal,
+		Id_Cadena                                                   as PreciosCompetencia.Id_Cadena,
+        Id_Usuario													as PreciosCompetencia.Id_Usuario,
+		Id_Producto                                                 as PreciosCompetencia.Id_Producto,
+		Id_Marca                                                    as PreciosCompetencia.Id_Marca,
+		IdMarca_Propia                                              as PreciosCompetencia.Id_Marca_propia, 
+		Fecha														as PreciosCompetencia.Fecha,
+		Precio														as PreciosCompetencia.Precio,
+		Linea														as PreciosCompetencia.Linea,
+		Marca														as PreciosCompetencia.Marca,
+		MarcaCompetencia											as PreciosCompetencia.MarcaCompetencia,
+		ApplyMap('Map_FotoMarca', Marca, Null())					as PreciosCompetencia.Logo,
+		ApplyMap('Map_FotoMarca', MarcaCompetencia, Null())			as PreciosCompetencia.LogoCompetencia	
+	Resident PreciosCompetencia_Tmp2;
+	Drop Table PreciosCompetencia_Tmp2;
+
+STORE PreciosCompetencia INTO [lib://COMP_DataMart (eficacia_admin_analitica)/SGI/Colombia/SPECTRUM_BRANDS_PET/_PreciosCompetencia_$(Anno)$(Mes).qvd];
+Drop Table PreciosCompetencia;
